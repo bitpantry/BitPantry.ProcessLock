@@ -14,7 +14,7 @@ dotnet_csproj:
 install:
 - cmd: dotnet restore
 before_test:
-- cmd: setx DOTNET_ENVIRONMENT buildserver
+- cmd: setx DOTNET_ENVIRONMENT buildserver /m
 build:
   publish_nuget: true
   publish_nuget_symbols: false
