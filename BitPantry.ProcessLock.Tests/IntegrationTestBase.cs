@@ -65,7 +65,7 @@ namespace BitPantry.ProcessLock.Tests
 
         protected void CheckIfSkipped(IntegrationTestServerType serverType)
         {
-            if (serverType == IntegrationTestServerType.Sqlite && Config["Environment"] != "Development")
+            if (serverType == IntegrationTestServerType.SqlServer && Config["Environment"] != "Development")
                 throw new SkipException($"{serverType} is disabled for testing in this environment");
         }
     }
