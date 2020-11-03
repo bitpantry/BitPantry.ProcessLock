@@ -1,6 +1,4 @@
 version: 1.0.1.{build}
-environment:
-  DOTNET_ENVIRONMENT: buildserver
 image: Previous Visual Studio 2019
 dotnet_csproj:
   patch: true

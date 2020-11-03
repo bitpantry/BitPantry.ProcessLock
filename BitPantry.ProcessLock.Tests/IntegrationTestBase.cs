@@ -29,6 +29,8 @@ namespace BitPantry.ProcessLock.Tests
                 .AddJsonFile($"appsettings.{Environment.GetEnvironmentVariable("DOTNET_ENVIRONMENT")}.json", true, true)
                 .Build();
 
+            var val = Environment.GetEnvironmentVariable("TMP");
+
             // create sql server services
 
             var sqlServerServices = new ServiceCollection();
