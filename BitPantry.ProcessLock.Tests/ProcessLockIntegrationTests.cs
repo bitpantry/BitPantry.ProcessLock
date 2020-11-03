@@ -47,7 +47,7 @@ namespace BitPantry.ProcessLock.Tests
 
                 (await svc.Create(processId, 250)).Should().BeTrue();
 
-                await Task.Delay(250);
+                await Task.Delay(300);
 
                 (await svc.Create(processId, 250)).Should().BeTrue();
             }
