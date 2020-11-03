@@ -13,6 +13,8 @@ dotnet_csproj:
   informational_version: '{version}'
 install:
 - cmd: dotnet restore
+before_test:
+- cmd: setx DOTNET_ENVIRONMENT buildserver
 build:
   publish_nuget: true
   publish_nuget_symbols: false
