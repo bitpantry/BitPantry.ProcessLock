@@ -26,17 +26,19 @@ namespace BitPantry.ProcessLock.Implementation.Database
 
                 { $"{DatabaseProcessLockServerType.Sqlite}_{CreateTableScriptName}",
                         $"CREATE TABLE {_tableName} (" +
-                        "Id TEXT PRIMARY KEY, " +
-                        "HostName TEXT NOT NULL, " +
-                        "ExpiresOn TEXT NOT NULL)"
+                        "ProcessName TEXT PRIMARY KEY, " +
+                        "Token TEXT NOT NULL, " +
+                        "ExpiresOn TEXT NOT NULL, " +
+                        "LockDuration TEXT NOT NULL)"
                 },
                 { $"{DatabaseProcessLockServerType.SqlServer}_{CreateTableScriptName}",
                         $"CREATE TABLE [dbo].[{_tableName}] " +
                         "( " +
-                        "[Id][varchar](200) NOT NULL, " +
-                        "[HostName] [varchar](200) NOT NULL, " +
+                        "[ProcessName][varchar](200) NOT NULL, " +
+                        "[Token][varchar](200) NOT NULL, " +
                         "[ExpiresOn] [datetime] NOT NULL, " +
-                        $"CONSTRAINT[PK_{_tableName}] PRIMARY KEY CLUSTERED([Id] ASC)" +
+                        "[LockDuration] [int] NOT NULL, " +
+                        $"CONSTRAINT[PK_{_tableName}] PRIMARY KEY CLUSTERED([ProcessName] ASC)" +
                         "WITH(PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON) ON[PRIMARY] " +
                         ") ON[PRIMARY]" },
 
@@ -62,16 +64,19 @@ namespace BitPantry.ProcessLock.Implementation.Database
         public string GetCreateTableScript() => GetScript(CreateTableScriptName);
         public string GetDropTableScript() => GetScript(DropTableScriptName);
         public string GetInsertScript()
-            => $"INSERT INTO {_tableName}(Id, HostName, ExpiresOn) VALUES(@Id, @Hostname, @ExpiresOn)";
+            => $"INSERT INTO {_tableName}(ProcessName, Token, ExpiresOn, LockDuration) VALUES(@ProcessName, @Token, @ExpiresOn, @LockDuration)";
 
-        public string GetSelectScript()
-            => $"SELECT Id, Hostname, ExpiresOn  FROM {_tableName} WHERE Id = @Id";
+        public string GetSelectByTokenSript()
+            => $"SELECT ProcessName, Token, ExpiresOn, LockDuration FROM {_tableName} WHERE Token = @Token";
+
+        public string GetSelectByProcessNameScript()
+            => $"SELECT ProcessName, Token, ExpiresOn, LockDuration FROM {_tableName} WHERE ProcessName = @ProcessName";
 
         public string GetUpdateScript()
-            => $"UPDATE {_tableName} SET HostName = @Hostname, ExpiresOn = @ExpiresOn WHERE Id = @Id";
+            => $"UPDATE {_tableName} SET ExpiresOn = @ExpiresOn, LockDuration = @LockDuration WHERE Token = @Token";
 
         public string GetDeleteScript()
-            => $"DELETE FROM {_tableName} WHERE Id = @Id";
+            => $"DELETE FROM {_tableName} WHERE Token = @Token";
 
         private string GetScript(string scriptName) => _scripts[$"{_serverType}_{scriptName}"];
     }

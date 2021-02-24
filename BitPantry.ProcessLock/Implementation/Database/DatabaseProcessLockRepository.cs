@@ -53,17 +53,17 @@ namespace BitPantry.ProcessLock.Implementation.Database
                 cmd.CommandText = _scripts.GetInsertScript();
                 cmd.CommandType = CommandType.Text;
 
-                var ParamId = cmd.CreateParameter();
-                ParamId.ParameterName = "@Id";
-                ParamId.DbType = DbType.String;
-                ParamId.Value = record.Id;
-                ParamId.Direction = ParameterDirection.Input;
+                var paramProcessName = cmd.CreateParameter();
+                paramProcessName.ParameterName = "@ProcessName";
+                paramProcessName.DbType = DbType.String;
+                paramProcessName.Value = record.ProcessName;
+                paramProcessName.Direction = ParameterDirection.Input;
 
-                var ParamHostname = cmd.CreateParameter();
-                ParamHostname.ParameterName = "@Hostname";
-                ParamHostname.DbType = DbType.String;
-                ParamHostname.Value = record.HostName;
-                ParamHostname.Direction = ParameterDirection.Input;
+                var paramToken = cmd.CreateParameter();
+                paramToken.ParameterName = "@Token";
+                paramToken.DbType = DbType.String;
+                paramToken.Value = record.Token;
+                paramToken.Direction = ParameterDirection.Input;
 
                 var ParamExpiresOn = cmd.CreateParameter();
                 ParamExpiresOn.ParameterName = "@ExpiresOn";
@@ -71,40 +71,82 @@ namespace BitPantry.ProcessLock.Implementation.Database
                 ParamExpiresOn.Value = record.ExpiresOn;
                 ParamExpiresOn.Direction = ParameterDirection.Input;
 
-                cmd.Parameters.Add(ParamId);
-                cmd.Parameters.Add(ParamHostname);
+                var ParamLockDuration = cmd.CreateParameter();
+                ParamLockDuration.ParameterName = "@LockDuration";
+                ParamLockDuration.DbType = DbType.Int32;
+                ParamLockDuration.Value = record.LockDuration;
+                ParamLockDuration.Direction = ParameterDirection.Input;
+
+                cmd.Parameters.Add(paramProcessName);
+                cmd.Parameters.Add(paramToken);
                 cmd.Parameters.Add(ParamExpiresOn);
+                cmd.Parameters.Add(ParamLockDuration);
 
                 cmd.ExecuteNonQuery();
             });
         }
 
-        public async Task<DatabaseProcessLockRecord> Read(string processId)
+        public async Task<DatabaseProcessLockRecord> ReadByToken(string token)
         {
             return await Task.Run(() =>
             {
                 EnsureDependencies();
 
                 var cmd = _ctx.Connection.CreateCommand();
-                cmd.CommandText = _scripts.GetSelectScript();
+                cmd.CommandText = _scripts.GetSelectByTokenSript();
                 cmd.CommandType = CommandType.Text;
 
-                var ParamId = cmd.CreateParameter();
-                ParamId.ParameterName = "@Id";
-                ParamId.DbType = DbType.String;
-                ParamId.Value = processId;
-                ParamId.Direction = ParameterDirection.Input;
+                var ParamToken = cmd.CreateParameter();
+                ParamToken.ParameterName = "@Token";
+                ParamToken.DbType = DbType.String;
+                ParamToken.Value = token;
+                ParamToken.Direction = ParameterDirection.Input;
 
-                cmd.Parameters.Add(ParamId);
+                cmd.Parameters.Add(ParamToken);
 
                 using (var reader = cmd.ExecuteReader())
                 {
                     if(reader.Read())
                         return new DatabaseProcessLockRecord
                         {
-                            Id = reader.GetString(0),
-                            HostName = reader.GetString(1),
-                            ExpiresOn = reader.GetDateTime(2)
+                            ProcessName = reader.GetString(0),
+                            Token = reader.GetString(1),
+                            ExpiresOn = reader.GetDateTime(2),
+                            LockDuration = reader.GetInt32(3)
+                        };
+
+                    return null;
+                }
+            });
+        }
+
+        public async Task<DatabaseProcessLockRecord> ReadByProcessName(string processName)
+        {
+            return await Task.Run(() =>
+            {
+                EnsureDependencies();
+
+                var cmd = _ctx.Connection.CreateCommand();
+                cmd.CommandText = _scripts.GetSelectByProcessNameScript();
+                cmd.CommandType = CommandType.Text;
+
+                var ParamProcessName = cmd.CreateParameter();
+                ParamProcessName.ParameterName = "@ProcessName";
+                ParamProcessName.DbType = DbType.String;
+                ParamProcessName.Value = processName;
+                ParamProcessName.Direction = ParameterDirection.Input;
+
+                cmd.Parameters.Add(ParamProcessName);
+
+                using (var reader = cmd.ExecuteReader())
+                {
+                    if (reader.Read())
+                        return new DatabaseProcessLockRecord
+                        {
+                            ProcessName = reader.GetString(0),
+                            Token = reader.GetString(1),
+                            ExpiresOn = reader.GetDateTime(2),
+                            LockDuration = reader.GetInt32(3)
                         };
 
                     return null;
@@ -122,17 +164,11 @@ namespace BitPantry.ProcessLock.Implementation.Database
                 cmd.CommandText = _scripts.GetUpdateScript();
                 cmd.CommandType = CommandType.Text;
 
-                var ParamId = cmd.CreateParameter();
-                ParamId.ParameterName = "@Id";
-                ParamId.DbType = DbType.String;
-                ParamId.Value = record.Id;
-                ParamId.Direction = ParameterDirection.Input;
-
-                var ParamHostname = cmd.CreateParameter();
-                ParamHostname.ParameterName = "@Hostname";
-                ParamHostname.DbType = DbType.String;
-                ParamHostname.Value = record.HostName;
-                ParamHostname.Direction = ParameterDirection.Input;
+                var ParamToken = cmd.CreateParameter();
+                ParamToken.ParameterName = "@Token";
+                ParamToken.DbType = DbType.String;
+                ParamToken.Value = record.Token;
+                ParamToken.Direction = ParameterDirection.Input;
 
                 var ParamExpiresOn = cmd.CreateParameter();
                 ParamExpiresOn.ParameterName = "@ExpiresOn";
@@ -140,9 +176,15 @@ namespace BitPantry.ProcessLock.Implementation.Database
                 ParamExpiresOn.Value = record.ExpiresOn;
                 ParamExpiresOn.Direction = ParameterDirection.Input;
 
-                cmd.Parameters.Add(ParamId);
-                cmd.Parameters.Add(ParamHostname);
+                var ParamLockDuration = cmd.CreateParameter();
+                ParamLockDuration.ParameterName = "@LockDuration";
+                ParamLockDuration.DbType = DbType.Int32;
+                ParamLockDuration.Value = record.LockDuration;
+                ParamLockDuration.Direction = ParameterDirection.Input;
+
+                cmd.Parameters.Add(ParamToken);
                 cmd.Parameters.Add(ParamExpiresOn);
+                cmd.Parameters.Add(ParamLockDuration);
 
                 cmd.ExecuteNonQuery();
 
@@ -150,7 +192,7 @@ namespace BitPantry.ProcessLock.Implementation.Database
             });
         }
 
-        public async Task Delete(string processId)
+        public async Task Delete(string token)
         {
             await Task.Run(() =>
             {
@@ -160,13 +202,13 @@ namespace BitPantry.ProcessLock.Implementation.Database
                 cmd.CommandText = _scripts.GetDeleteScript();
                 cmd.CommandType = CommandType.Text;
 
-                var ParamId = cmd.CreateParameter();
-                ParamId.ParameterName = "@Id";
-                ParamId.DbType = DbType.String;
-                ParamId.Value = processId;
-                ParamId.Direction = ParameterDirection.Input;
+                var ParamToken = cmd.CreateParameter();
+                ParamToken.ParameterName = "@Token";
+                ParamToken.DbType = DbType.String;
+                ParamToken.Value = token;
+                ParamToken.Direction = ParameterDirection.Input;
 
-                cmd.Parameters.Add(ParamId);
+                cmd.Parameters.Add(ParamToken);
 
                 cmd.ExecuteNonQuery();
             });

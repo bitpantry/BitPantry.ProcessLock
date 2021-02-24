@@ -50,35 +50,51 @@ As long as the connection string and credentials are valid and have sufficient p
 To create and manage Process Locks, inject the `IProcessLock` dependency.
 
 ```
-public interface IProcessLock
-{
-    /// <summary>
-    /// Attempts to create a process lock
-    /// </summary>
-    /// <param name="processName">The name of the process to lock</param>
-    /// <param name="lockDuration">The duration in minutes of the lock</param>
-    /// <returns>True if the lock was successfully created, otherwise false</returns>
-    /// <remarks>The lock is considered expired after the lock duration has elapsed - renewing the lock resets the duration</remarks>
-    Task<bool> Create(string processName, int lockDuration);
+    public interface IProcessLock
+    {
+        /// <summary>
+        /// Attempts to create a process lock
+        /// </summary>
+        /// <param name="processName">The name of the process to lock</param>
+        /// <param name="lockDuration">The duration in milliseconds of the lock</param>
+        /// <returns>The lock token used for interacting with the lock later</returns>
+        /// <remarks>The lock is considered expired after the lock duration has elapsed - renewing the lock resets the duration</remarks>
+        Task<string> Create(string processName, int lockDuration);
 
-    /// <summary>
-    /// Releases a process lock
-    /// </summary>
-    /// <param name="processName">The name of the process</param>
-    /// <returns>The asynchronous task</returns>
-    /// <remarks>Function completes successfully even if process lock doesn't exist</remarks>
-    Task Release(string processName);
+        /// <summary>
+        /// Releases a process lock
+        /// </summary>
+        /// <param name="token">The lock token obtained when creating the lock</param>
+        /// <returns>The asynchronous task</returns>
+        /// <remarks>Function completes successfully even if process lock doesn't exist</remarks>
+        Task Release(string token);
 
-    /// <summary>
-    /// Renews a process lock for the given duration
-    /// </summary>
-    /// <param name="processName">The name of the process</param>
-    /// <param name="lockDuration">The duration in milliseconds to renew the lock for</param>
-    /// <param name="minRenewalInterval">The number of milliseconds before the lock expires before it can be renewed - this prevents
-    /// unnecessary updates to the locking mechanism while allowing Renew to be called frequently</param>
-    /// <returns>Whether or not the lock was renewed</returns>
-    Task<bool> Renew(string processName, int lockDuration, int minRenewalInterval);
-}
+        /// <summary>
+        /// Renews a process lock for the given duration
+        /// </summary>
+        /// <param name="token">The lock token obtained when creating the lock</param>
+        /// <param name="lockDuration">The duration in milliseconds to renew the lock for. Using any number less than or equal to 0 and the 
+        /// current lock duration will be used</param>
+        /// <param name="minRenewDuration">The amount of time in milliseconds before the lock expires before it can be renewed in order to prevent 
+        /// overaccessing the locking mechanism. Using any number less than or equal to 0 and now minimum renew duration will be applied. The
+        /// default is 5000 milliseconds
+        /// <returns>Whether or not the lock was renewed</returns>
+        Task<bool> Renew(string token, int lockDuration = -1, int minRenewDuration = 5000);
+
+        /// <summary>
+        /// Checks to see if an active lock exists
+        /// </summary>
+        /// <param name="processName">The process name</param>
+        /// <returns>Whether or not an active lock exists for this process name</returns>
+        Task<bool> Exists(string processName);
+
+        /// <summary>
+        /// Creates a process lock scope
+        /// </summary>
+        /// <param name="processName">The name of the process to create the scope for</param>
+        /// <returns>A process lock scope</returns>
+        ProcessLockScope BeginScope(string processName);
+    }
 ```
 
 For each of the three functions, there are only three unique parameters.
@@ -86,8 +102,55 @@ For each of the three functions, there are only three unique parameters.
 - `processName` is the name of the process - all instances of the process should use the same name
 - `lockDuration` is the lifetime of the lock in milliseconds - once the lock is expired, a lock with the same process name can be created
 - `minRenewalInterval` is only used when renewing a lock and helps prevent *abusing* the underlying synchronization mechanism (in the default case, the database) by actually renewing a lock each time `Renew` is called - instead it only actually renews a lock when the lock expiration time minus the `minRenewalInterval` is less than now
+- When a lock is successfully created, a `Token` is returned and can be used to renew and release the lock in the future - without a token for a valid lock, the lock cannot be renewed or released
 
-# Example
+# Example - `ProcessLockScope`
+The easiest way to create a process lock is by using a `ProcessLockScope`. You can create a `ProcessLockScope` using the `IProcessLock:BeginScope(string processName)` function.
+
+In this example, the `TestLogic:Execute` function represents a process that may run in multiple simultaneous distributed instances and we only want one to actually execute at a time.
+
+```
+public class TestLogic
+{
+    private readonly string _processName = "MyProcess";
+    private readonly IProcessLock _pl;
+    private readonly ILogger<TestLogic> _log;
+
+    public TestLogic(IProcessLock pl, ILogger<TestLogic> log)
+    {
+        _pl = pl;
+        _log = log;
+    }
+
+    public async Task Execute(IEnumerable<DataToProcess> data)
+    {
+        // attempt to create a lock for the process named "MyProcess". Using a ProcessLockScope
+        // will spin up an asynchronous process to maintain the lock until the scope is
+        // disposed, or until scope.Stop() is explicitly called.
+
+        using(var scope = _pl.BeginScope(_processName))
+        {
+            // to make sure a lock has been created ...
+
+            if(!scope.IsLocked) 
+            { 
+                // if the scope fails to obtain a lock, it means that a lock is already
+                // obtained by another process
+            }
+            else
+            {
+                _log.LogDebug(await _pl.Exists(_processName)); // logs 'true'
+            }
+        }
+
+        _log.LogDebug(await _pl.Exists(_processName)); // logs 'false'
+
+    }
+}
+```
+# Example - Managing Locks Directly
+If you want a little more control than the `ProcessLockScope` provides, you can create and maintain locks directly using the `IProcessLock`.
+
 In this example, the `TestLogic:Execute` function represents a process that may run in multiple simultaneous distributed instances and we only want one to actually execute at a time.
 
 ```
@@ -109,7 +172,9 @@ public class TestLogic
         // if successfully able to create the lock, the Create function returns 
         // true (and the process can continue), otherwise false (and the process can exit)
 
-        if(await _pl.Create(_processName, 15000)) 
+        var token = await _pl.Create(_processName, 15000)
+
+        if(token != null) 
         {
             _log.Debug("Acquired lock to run process - processing data ...");
 
@@ -128,7 +193,7 @@ public class TestLogic
                     // renew the lock and reset it to 15 seconds as long 
                     // as it is within seven seconds of expiring, otherwise do nothing
                     
-                    await _pl.Renew(_processName, 15000, 7000); 
+                    await _pl.Renew(token, 15000, 7000); 
                 }
             }
 
