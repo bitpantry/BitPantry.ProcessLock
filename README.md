@@ -1,3 +1,7 @@
+[![Build status](https://ci.appveyor.com/api/projects/status/pgaqasbgtgdwpy3u?svg=true)](https://ci.appveyor.com/project/bitpantry/bitpantry-processlock)
+
+`PM> Install-Package BitPantry.ProcessLock`
+
 # BitPantry.ProcessLock
 This project was created out of a personal need to be able to synchronize the execution of distributed process instances so that even though multiple instances may be running in different machines, only one process will actually be executing at a time.
 
