@@ -39,7 +39,7 @@ namespace BitPantry.ProcessLock
         {
             _isRunning = true;
 
-            DateTime expiresOn = DateTime.MinValue.ToUniversalTime();
+            DateTime expiresOn = DateTime.MinValue.AddYears(10).ToUniversalTime();
 
             do
             {
