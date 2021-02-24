@@ -74,9 +74,11 @@ namespace BitPantry.ProcessLock.Tests
         }
 
         [SkippableTheory]
-        [InlineData(IntegrationTestServerType.Sqlite)]
-        [InlineData(IntegrationTestServerType.SqlServer)]
-        public async Task CreateLock_RecordCreated(IntegrationTestServerType serverType)
+        [InlineData(IntegrationTestServerType.Sqlite, false)]
+        [InlineData(IntegrationTestServerType.SqlServer, false)]
+        [InlineData(IntegrationTestServerType.Sqlite, true)]
+        [InlineData(IntegrationTestServerType.SqlServer, true)]
+        public async Task CreateLock_RecordCreated(IntegrationTestServerType serverType, bool readByToken)
         {
             CheckIfSkipped(serverType);
 
@@ -84,28 +86,34 @@ namespace BitPantry.ProcessLock.Tests
             {
                 var pl = scope.ServiceProvider.GetRequiredService<DatabaseProcessLockRepository>();
 
-                var processId = Guid.NewGuid().ToString();
-                var expiresOn = DateTime.Now.AddMinutes(15);
+                var processName = Guid.NewGuid().ToString();
+                var token = Guid.NewGuid().ToString();
+                var expiresOn = DateTime.UtcNow.AddMinutes(15);
+                var lockDuration = (int)TimeSpan.FromMinutes(15).TotalMilliseconds;
 
                 await pl.Create(new DatabaseProcessLockRecord
                 {
-                    Id = processId,
-                    HostName = Environment.MachineName,
-                    ExpiresOn = expiresOn
+                    ProcessName = processName,
+                    Token = token,
+                    ExpiresOn = expiresOn,
+                    LockDuration = lockDuration
                 });
 
-                var persistedRecord = await pl.Read(processId);
+                var persistedRecord = readByToken ? await pl.ReadByToken(token) : await pl.ReadByProcessName(processName);
 
-                persistedRecord.Id.Should().Be(processId);
-                persistedRecord.HostName.Should().Be(Environment.MachineName);
+                persistedRecord.ProcessName.Should().Be(processName);
+                persistedRecord.Token.Should().Be(token);
                 persistedRecord.ExpiresOn.ToString("yyyy-MM-dd HH:mm:ss").Should().Be(expiresOn.ToString("yyyy-MM-dd HH:mm:ss"));
+                persistedRecord.LockDuration.Should().Be(lockDuration);
             }
         }
 
         [SkippableTheory]
-        [InlineData(IntegrationTestServerType.Sqlite)]
-        [InlineData(IntegrationTestServerType.SqlServer)]
-        public async Task DeleteLock_RecordDeleted(IntegrationTestServerType serverType)
+        [InlineData(IntegrationTestServerType.Sqlite, false)]
+        [InlineData(IntegrationTestServerType.SqlServer, false)]
+        [InlineData(IntegrationTestServerType.Sqlite, true)]
+        [InlineData(IntegrationTestServerType.SqlServer, true)]
+        public async Task UpdateLock_RecordUpdated(IntegrationTestServerType serverType, bool readByToken)
         {
             CheckIfSkipped(serverType);
 
@@ -113,25 +121,87 @@ namespace BitPantry.ProcessLock.Tests
             {
                 var pl = scope.ServiceProvider.GetRequiredService<DatabaseProcessLockRepository>();
 
-                var processId = Guid.NewGuid().ToString();
-                var expiresOn = DateTime.Now.AddMinutes(15);
+                var processName = Guid.NewGuid().ToString();
+                var token = Guid.NewGuid().ToString();
+                var expiresOn = DateTime.UtcNow.AddMinutes(15);
+                var lockDuration = (int)TimeSpan.FromMinutes(15).TotalMilliseconds;
+
+                // create
+
+                var record = new DatabaseProcessLockRecord
+                {
+                    ProcessName = processName,
+                    Token = token,
+                    ExpiresOn = expiresOn,
+                    LockDuration = lockDuration
+                };
+
+                await pl.Create(record);
+
+                var persistedRecord = readByToken ? await pl.ReadByToken(token) : await pl.ReadByProcessName(processName);
+
+                persistedRecord.ProcessName.Should().Be(processName);
+                persistedRecord.Token.Should().Be(token);
+                persistedRecord.ExpiresOn.ToString("yyyy-MM-dd HH:mm:ss").Should().Be(expiresOn.ToString("yyyy-MM-dd HH:mm:ss"));
+                persistedRecord.LockDuration.Should().Be(lockDuration);
+
+                // update
+
+                var processName2 = Guid.NewGuid().ToString();
+                var token2 = Guid.NewGuid().ToString();
+                var expiresOn2 = DateTime.UtcNow.AddMinutes(10);
+                var lockDuration2 = (int)TimeSpan.FromMinutes(10).TotalMilliseconds;
+
+                persistedRecord.ProcessName = processName2;
+                persistedRecord.ExpiresOn = expiresOn2;
+                persistedRecord.LockDuration = lockDuration2;
+
+                await pl.Update(persistedRecord);
+                persistedRecord = await pl.ReadByToken(token);
+
+                persistedRecord.ProcessName.Should().Be(processName);
+                persistedRecord.Token.Should().Be(token);
+                persistedRecord.ExpiresOn.ToString("yyyy-MM-dd HH:mm:ss").Should().Be(expiresOn2.ToString("yyyy-MM-dd HH:mm:ss"));
+                persistedRecord.LockDuration.Should().Be(lockDuration2);
+            }
+        }
+
+        [SkippableTheory]
+        [InlineData(IntegrationTestServerType.Sqlite, false)]
+        [InlineData(IntegrationTestServerType.SqlServer, false)]
+        [InlineData(IntegrationTestServerType.Sqlite, true)]
+        [InlineData(IntegrationTestServerType.SqlServer, true)]
+        public async Task DeleteLock_RecordDeleted(IntegrationTestServerType serverType, bool readByToken)
+        {
+            CheckIfSkipped(serverType);
+
+            using (var scope = CreateScope(serverType))
+            {
+                var pl = scope.ServiceProvider.GetRequiredService<DatabaseProcessLockRepository>();
+
+                var processName = Guid.NewGuid().ToString();
+                var token = Guid.NewGuid().ToString();
+                var expiresOn = DateTime.UtcNow.AddMinutes(15);
+                var lockDuration = (int)TimeSpan.FromMinutes(15).TotalMilliseconds;
 
                 await pl.Create(new DatabaseProcessLockRecord
                 {
-                    Id = processId,
-                    HostName = Environment.MachineName,
-                    ExpiresOn = expiresOn
+                    ProcessName = processName,
+                    Token = token,
+                    ExpiresOn = expiresOn,
+                    LockDuration = lockDuration
                 });
 
-                var persistedRecord = await pl.Read(processId);
+                var persistedRecord = readByToken ? await pl.ReadByToken(token) : await pl.ReadByProcessName(processName);
 
-                persistedRecord.Id.Should().Be(processId);
-                persistedRecord.HostName.Should().Be(Environment.MachineName);
+                persistedRecord.ProcessName.Should().Be(processName);
+                persistedRecord.Token.Should().Be(token);
                 persistedRecord.ExpiresOn.ToString("yyyy-MM-dd HH:mm:ss").Should().Be(expiresOn.ToString("yyyy-MM-dd HH:mm:ss"));
+                persistedRecord.LockDuration.Should().Be(lockDuration);
 
-                await pl.Delete(processId);
+                await pl.Delete(token);
 
-                persistedRecord = await pl.Read(processId);
+                persistedRecord = readByToken ? await pl.ReadByToken(token) : await pl.ReadByProcessName(processName);
 
                 persistedRecord.Should().BeNull();
             }
@@ -150,9 +220,10 @@ namespace BitPantry.ProcessLock.Tests
 
                 var record = new DatabaseProcessLockRecord
                 {
-                    Id = Guid.NewGuid().ToString(),
-                    HostName = Environment.MachineName,
-                    ExpiresOn = DateTime.Now.AddMinutes(15)
+                    ProcessName = Guid.NewGuid().ToString(),
+                    Token = Guid.NewGuid().ToString(),
+                    ExpiresOn = DateTime.UtcNow.AddMinutes(15),
+                    LockDuration = (int)TimeSpan.FromMinutes(15).TotalMilliseconds
                 };
 
                 await pl.Create(record);

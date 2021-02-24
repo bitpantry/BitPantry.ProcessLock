@@ -26,9 +26,9 @@ namespace BitPantry.ProcessLock.Tests
             {
                 var svc = scope.ServiceProvider.GetRequiredService<IProcessLock>();
 
-                var processId = Guid.NewGuid().ToString();
+                var processName = Guid.NewGuid().ToString();
 
-               (await svc.Create(processId, 500)).Should().BeTrue();
+                (await svc.Create(processName, 500)).Should().NotBeNull();
             }
         }
 
@@ -43,13 +43,13 @@ namespace BitPantry.ProcessLock.Tests
             {
                 var svc = scope.ServiceProvider.GetRequiredService<IProcessLock>();
 
-                var processId = Guid.NewGuid().ToString();
+                var processName = Guid.NewGuid().ToString();
 
-                (await svc.Create(processId, 250)).Should().BeTrue();
+                (await svc.Create(processName, 250)).Should().NotBeNull();
 
                 await Task.Delay(300);
 
-                (await svc.Create(processId, 250)).Should().BeTrue();
+                (await svc.Create(processName, 250)).Should().NotBeNull();
             }
         }
 
@@ -64,11 +64,11 @@ namespace BitPantry.ProcessLock.Tests
             {
                 var svc = scope.ServiceProvider.GetRequiredService<IProcessLock>();
 
-                var processId = Guid.NewGuid().ToString();
+                var processName = Guid.NewGuid().ToString();
 
-                (await svc.Create(processId, 250)).Should().BeTrue();
+                (await svc.Create(processName, 250)).Should().NotBeNull();
 
-                (await svc.Create(processId, 250)).Should().BeFalse();
+                (await svc.Create(processName, 250)).Should().BeNull();
             }
         }
 
@@ -83,11 +83,12 @@ namespace BitPantry.ProcessLock.Tests
             {
                 var svc = scope.ServiceProvider.GetRequiredService<IProcessLock>();
 
-                var processId = Guid.NewGuid().ToString();
+                var processName = Guid.NewGuid().ToString();
 
-                (await svc.Create(processId, 500)).Should().BeTrue();
+                var token = await svc.Create(processName, 500);
+                token.Should().NotBeNull();
 
-                (await svc.Renew(processId, 500, 500)).Should().BeTrue();
+                (await svc.Renew(token, 500, 500)).Should().BeTrue();
             }
         }
 
@@ -102,11 +103,12 @@ namespace BitPantry.ProcessLock.Tests
             {
                 var svc = scope.ServiceProvider.GetRequiredService<IProcessLock>();
 
-                var processId = Guid.NewGuid().ToString();
+                var processName = Guid.NewGuid().ToString();
 
-                (await svc.Create(processId, 500)).Should().BeTrue();
+                var token = await svc.Create(processName, 500);
+                token.Should().NotBeNull();
 
-                (await svc.Renew(processId, 500, 250)).Should().BeFalse();
+                (await svc.Renew(processName, 500, 250)).Should().BeFalse();
             }
         }
 
@@ -121,17 +123,19 @@ namespace BitPantry.ProcessLock.Tests
             {
                 var svc = scope.ServiceProvider.GetRequiredService<IProcessLock>();
 
-                var processId = Guid.NewGuid().ToString();
+                var processName = Guid.NewGuid().ToString();
 
-                (await svc.Create(processId, 500)).Should().BeTrue();
+                var token = await svc.Create(processName, 500);
+                token.Should().NotBeNull();
 
                 await Task.Delay(300);
 
-                (await svc.Renew(processId, 500, 400)).Should().BeTrue();
+                (await svc.Renew(token, 500, 400)).Should().BeTrue();
 
                 await Task.Delay(200);
 
-                (await svc.Create(processId, 500)).Should().BeFalse();
+                var newToken = await svc.Create(processName, 500);
+                newToken.Should().BeNull();
             }
         }
 
@@ -146,17 +150,78 @@ namespace BitPantry.ProcessLock.Tests
             {
                 var svc = scope.ServiceProvider.GetRequiredService<IProcessLock>();
 
-                var processId = Guid.NewGuid().ToString();
+                var processName = Guid.NewGuid().ToString();
 
-                (await svc.Create(processId, 250)).Should().BeTrue();
+                var token = await svc.Create(processName, 250);
+                token.Should().NotBeNull();
 
                 await Task.Delay(100);
 
-                (await svc.Renew(processId, 250, 250)).Should().BeTrue();
+                (await svc.Renew(token, 250, 250)).Should().BeTrue();
 
                 await Task.Delay(500);
 
-                (await svc.Create(processId, 500)).Should().BeTrue();
+                var newToken = await svc.Create(processName, 500);
+                newToken.Should().NotBeNull();
+            }
+        }
+
+        [SkippableTheory]
+        [InlineData(IntegrationTestServerType.Sqlite)]
+        [InlineData(IntegrationTestServerType.SqlServer)]
+        public async Task CheckLockExists_Exists(IntegrationTestServerType serverType)
+        {
+            CheckIfSkipped(serverType);
+
+            using (var scope = CreateScope(serverType))
+            {
+                var svc = scope.ServiceProvider.GetRequiredService<IProcessLock>();
+
+                var processName = Guid.NewGuid().ToString();
+
+                var token = await svc.Create(processName, 60000);
+                token.Should().NotBeNull();
+
+                (await svc.Exists(processName)).Should().BeTrue();
+            }
+        }
+
+        [SkippableTheory]
+        [InlineData(IntegrationTestServerType.Sqlite)]
+        [InlineData(IntegrationTestServerType.SqlServer)]
+        public async Task CheckExpiredLockExists_NotExist(IntegrationTestServerType serverType)
+        {
+            CheckIfSkipped(serverType);
+
+            using (var scope = CreateScope(serverType))
+            {
+                var svc = scope.ServiceProvider.GetRequiredService<IProcessLock>();
+
+                var processName = Guid.NewGuid().ToString();
+
+                var token = await svc.Create(processName, 50);
+                token.Should().NotBeNull();
+
+                await Task.Delay(100);
+
+                (await svc.Exists(processName)).Should().BeFalse();
+            }
+        }
+
+        [SkippableTheory]
+        [InlineData(IntegrationTestServerType.Sqlite)]
+        [InlineData(IntegrationTestServerType.SqlServer)]
+        public async Task CheckLockExists_NotExists(IntegrationTestServerType serverType)
+        {
+            CheckIfSkipped(serverType);
+
+            using (var scope = CreateScope(serverType))
+            {
+                var svc = scope.ServiceProvider.GetRequiredService<IProcessLock>();
+
+                var processName = Guid.NewGuid().ToString();
+
+                (await svc.Exists(processName)).Should().BeFalse();
             }
         }
     }
