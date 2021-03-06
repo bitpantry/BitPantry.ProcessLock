@@ -15,13 +15,13 @@ namespace BitPantry.ProcessLock.Implementation.Database
             switch (options.DatabaseProcessLockOptions.ServerType)
             {
                 case DatabaseProcessLockServerType.SqlServer:
-                    services.AddTransient<IDatabaseProcessLockContext>(svc => 
+                    services.AddScoped<IDatabaseProcessLockContext>(svc => 
                         new SqlServerProcessLockContext(
                             options.DatabaseProcessLockOptions.ConnectionString, 
                             options.DatabaseProcessLockOptions.DoUseUniqueTableNameSuffix));
                     break;
                 case DatabaseProcessLockServerType.Sqlite:
-                    services.AddTransient<IDatabaseProcessLockContext>(svc => 
+                    services.AddScoped<IDatabaseProcessLockContext>(svc => 
                         new SqliteProcessLockContext(
                             options.DatabaseProcessLockOptions.ConnectionString, 
                             options.DatabaseProcessLockOptions.DoUseUniqueTableNameSuffix));
