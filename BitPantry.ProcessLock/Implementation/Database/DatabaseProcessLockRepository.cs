@@ -82,7 +82,8 @@ namespace BitPantry.ProcessLock.Implementation.Database
                 cmd.Parameters.Add(ParamExpiresOn);
                 cmd.Parameters.Add(ParamLockDuration);
 
-                cmd.ExecuteNonQuery();
+                lock(_ctx)
+                    cmd.ExecuteNonQuery();
             });
         }
 
@@ -104,18 +105,21 @@ namespace BitPantry.ProcessLock.Implementation.Database
 
                 cmd.Parameters.Add(ParamToken);
 
-                using (var reader = cmd.ExecuteReader())
+                lock (_ctx)
                 {
-                    if(reader.Read())
-                        return new DatabaseProcessLockRecord
-                        {
-                            ProcessName = reader.GetString(0),
-                            Token = reader.GetString(1),
-                            ExpiresOn = reader.GetDateTime(2),
-                            LockDuration = reader.GetInt32(3)
-                        };
+                    using (var reader = cmd.ExecuteReader())
+                    {
+                        if (reader.Read())
+                            return new DatabaseProcessLockRecord
+                            {
+                                ProcessName = reader.GetString(0),
+                                Token = reader.GetString(1),
+                                ExpiresOn = reader.GetDateTime(2),
+                                LockDuration = reader.GetInt32(3)
+                            };
 
-                    return null;
+                        return null;
+                    }
                 }
             });
         }
@@ -138,18 +142,21 @@ namespace BitPantry.ProcessLock.Implementation.Database
 
                 cmd.Parameters.Add(ParamProcessName);
 
-                using (var reader = cmd.ExecuteReader())
+                lock (_ctx)
                 {
-                    if (reader.Read())
-                        return new DatabaseProcessLockRecord
-                        {
-                            ProcessName = reader.GetString(0),
-                            Token = reader.GetString(1),
-                            ExpiresOn = reader.GetDateTime(2),
-                            LockDuration = reader.GetInt32(3)
-                        };
+                    using (var reader = cmd.ExecuteReader())
+                    {
+                        if (reader.Read())
+                            return new DatabaseProcessLockRecord
+                            {
+                                ProcessName = reader.GetString(0),
+                                Token = reader.GetString(1),
+                                ExpiresOn = reader.GetDateTime(2),
+                                LockDuration = reader.GetInt32(3)
+                            };
 
-                    return null;
+                        return null;
+                    }
                 }
             });
         }
@@ -186,7 +193,8 @@ namespace BitPantry.ProcessLock.Implementation.Database
                 cmd.Parameters.Add(ParamExpiresOn);
                 cmd.Parameters.Add(ParamLockDuration);
 
-                cmd.ExecuteNonQuery();
+                lock(_ctx)
+                    cmd.ExecuteNonQuery();
 
                 return record;
             });
@@ -210,7 +218,8 @@ namespace BitPantry.ProcessLock.Implementation.Database
 
                 cmd.Parameters.Add(ParamToken);
 
-                cmd.ExecuteNonQuery();
+                lock(_ctx)
+                    cmd.ExecuteNonQuery();
             });
         }
 
@@ -223,7 +232,8 @@ namespace BitPantry.ProcessLock.Implementation.Database
 
                 cmd.CommandText = _scripts.GetCreateTableScript();
 
-                cmd.ExecuteNonQuery();
+                lock(_ctx)
+                    cmd.ExecuteNonQuery();
             });
         }
 
@@ -236,7 +246,8 @@ namespace BitPantry.ProcessLock.Implementation.Database
 
                 cmd.CommandText = _scripts.GetSelectTableScript();
 
-                return (long)cmd.ExecuteScalar() > 0;
+                lock(_ctx)
+                    return (long)cmd.ExecuteScalar() > 0;
             });
         }
 
@@ -251,26 +262,28 @@ namespace BitPantry.ProcessLock.Implementation.Database
 
                     cmd.CommandText = _scripts.GetDropTableScript();
 
-                    cmd.ExecuteNonQuery();
+                    lock(_ctx)
+                        cmd.ExecuteNonQuery();
                 });
             }
         }
         
         public void EnsureDependencies()
         {
+            // ensure open connection
+
             lock (_ctx)
             {
-                // ensure open connection
-
                 if (_ctx.Connection.State == ConnectionState.Closed)
                     _ctx.Connection.Open();
+            }
 
                 // ensure database exists
                 if (!_hasCheckedDatabase && !DoesTableExist().GetAwaiter().GetResult())
                     CreateTable().GetAwaiter().GetResult();
 
                 _hasCheckedDatabase = true;
-            }
+
         }
 
         public bool IsUniqueKeyViolatedException(Exception ex)
