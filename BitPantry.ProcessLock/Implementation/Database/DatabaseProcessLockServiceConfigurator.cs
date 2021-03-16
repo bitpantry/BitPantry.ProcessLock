@@ -9,8 +9,8 @@ namespace BitPantry.ProcessLock.Implementation.Database
     {
         public void Configure(IServiceCollection services, ProcessLockOptions options)
         {
-            services.AddTransient<IProcessLock, DatabaseProcessLock>();
-            services.AddTransient<DatabaseProcessLockRepository>();
+            services.AddScoped<IProcessLock, DatabaseProcessLock>();
+            services.AddScoped<DatabaseProcessLockRepository>();
 
             switch (options.DatabaseProcessLockOptions.ServerType)
             {
