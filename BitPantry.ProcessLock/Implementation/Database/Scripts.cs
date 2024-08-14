@@ -24,13 +24,6 @@ namespace BitPantry.ProcessLock.Implementation.Database
             {
                 // CREATE TABLE
 
-                { $"{DatabaseProcessLockServerType.Sqlite}_{CreateTableScriptName}",
-                        $"CREATE TABLE {_tableName} (" +
-                        "ProcessName TEXT PRIMARY KEY, " +
-                        "Token TEXT NOT NULL, " +
-                        "ExpiresOn TEXT NOT NULL, " +
-                        "LockDuration TEXT NOT NULL)"
-                },
                 { $"{DatabaseProcessLockServerType.SqlServer}_{CreateTableScriptName}",
                         $"CREATE TABLE [dbo].[{_tableName}] " +
                         "( " +
@@ -44,7 +37,6 @@ namespace BitPantry.ProcessLock.Implementation.Database
 
                 // SELECT TABLE
 
-                { $"{DatabaseProcessLockServerType.Sqlite}_{SelectTableScriptName}", $"SELECT COUNT(name) FROM sqlite_master WHERE type='table' AND name='{_tableName}'" },
                 { $"{DatabaseProcessLockServerType.SqlServer}_{SelectTableScriptName}",
                         "SELECT CAST(COUNT(*) AS BIGINT) " +
                         "FROM INFORMATION_SCHEMA.TABLES " +
@@ -53,7 +45,6 @@ namespace BitPantry.ProcessLock.Implementation.Database
 
                 // DROP TABLE
 
-                { $"{DatabaseProcessLockServerType.Sqlite}_{DropTableScriptName}", $"DROP TABLE {_tableName}" },
                 { $"{DatabaseProcessLockServerType.SqlServer}_{DropTableScriptName}", $"DROP TABLE [dbo].[{_tableName}]" }
 
             };

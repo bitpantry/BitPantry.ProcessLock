@@ -20,11 +20,13 @@ namespace BitPantry.ProcessLock
         /// </summary>
         /// <param name="services">The services collection</param>
         /// <param name="configureOptionsAction">The process lock options</param>
-        public static void ConfigureProcessLocks(this IServiceCollection services, Action<ProcessLockOptions> configureOptionsAction)
+        public static IServiceCollection ConfigureProcessLocks(this IServiceCollection services, Action<ProcessLockOptions> configureOptionsAction)
         {
             var options = new ProcessLockOptions();
             configureOptionsAction(options);
             ConfiguratorDict[options.Implementation].Configure(services, options);
+
+            return services;
         }  
     }
 }

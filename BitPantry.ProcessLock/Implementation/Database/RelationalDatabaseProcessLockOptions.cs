@@ -7,8 +7,7 @@ namespace BitPantry.ProcessLock.Implementation.Database
 {
     public enum DatabaseProcessLockServerType
     {
-        SqlServer,
-        Sqlite
+        SqlServer
     }
 
     public class RelationalDatabaseProcessLockOptions
@@ -20,19 +19,6 @@ namespace BitPantry.ProcessLock.Implementation.Database
         internal DatabaseProcessLockServerType ServerType { get; private set; }
 
         internal RelationalDatabaseProcessLockOptions() { }
-
-        /// <summary>
-        /// Use Sqlite as the distributed locking mechanism
-        /// </summary>
-        /// <param name="connectionString">The connection string to the database where the process lock table should be created</param>
-        /// <returns>The options</returns>
-        public RelationalDatabaseProcessLockOptions WithSqlite(string connectionString)
-        {
-            ServerType = DatabaseProcessLockServerType.Sqlite;
-            ConnectionString = connectionString;
-
-            return this;
-        }
 
         /// <summary>
         /// Uses SQL Server as the distributed locking mechanism
