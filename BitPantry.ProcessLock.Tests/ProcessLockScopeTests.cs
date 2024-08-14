@@ -1,69 +1,55 @@
 ﻿using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using System;
-using Xunit;
-using BitPantry.ProcessLock;
-using BitPantry.ProcessLock.Implementation.Database;
 using FluentAssertions;
-using System.Threading.Tasks;
-using System.Data.SqlClient;
-using Microsoft.Data.Sqlite;
+using System;
 
-namespace BitPantry.ProcessLock.Tests
+namespace BitPantry.ProcessLock.Tests;
+
+[TestClass]
+public class ProcessLockScopeTests : IntegrationTestBase
 {
-    public class ProcessLockScopeTests : IntegrationTestBase
+
+    [TestMethod]
+    public async Task CreateScope_ScopeCreated()
     {
-        public ProcessLockScopeTests() { }
-
-        [SkippableTheory]
-        [InlineData(IntegrationTestServerType.Sqlite)]
-        [InlineData(IntegrationTestServerType.SqlServer)]
-        public async Task CreateScope_ScopeCreated(IntegrationTestServerType serverType)
+        using (var scope = ServiceProvider.CreateScope())
         {
-            CheckIfSkipped(serverType);
-
-            using (var scope = CreateScope(serverType))
-            {
-                var svc = scope.ServiceProvider.GetRequiredService<IProcessLock>();
+            var svc = scope.ServiceProvider.GetRequiredService<IProcessLock>();
                 
-                var processName = Guid.NewGuid().ToString();
+            var processName = Guid.NewGuid().ToString();
 
-                ProcessLockScope pls = null;
+            ProcessLockScope pls = null;
 
-                (await svc.Exists(processName)).Should().BeFalse();
+            (await svc.Exists(processName)).Should().BeFalse();
 
-                using (pls = svc.BeginScope(processName))
-                {
-                    pls.Token.Should().NotBeNull();
-                    pls.IsLocked.Should().BeTrue();
-
-                    (await svc.Exists(processName)).Should().BeTrue();
-                }
-
-                (await svc.Exists(processName)).Should().BeFalse();
-            }
-        }
-
-        [SkippableTheory]
-        [InlineData(IntegrationTestServerType.Sqlite)]
-        [InlineData(IntegrationTestServerType.SqlServer)]
-        public async Task CreateScope_ExistingLock_NoLock(IntegrationTestServerType serverType)
-        {
-            CheckIfSkipped(serverType);
-
-            using (var scope = CreateScope(serverType))
+            using (pls = svc.BeginScope(processName))
             {
-                var svc = scope.ServiceProvider.GetRequiredService<IProcessLock>();
+                pls.Token.Should().NotBeNull();
+                pls.IsLocked.Should().BeTrue();
 
-                var processName = Guid.NewGuid().ToString();
-                await svc.Create(processName, 10000);
+                (await svc.Exists(processName)).Should().BeTrue();
+            }
 
-                using (var pls = svc.BeginScope(processName))
-                {
-                    pls.Token.Should().BeNull();
-                    pls.IsLocked.Should().BeFalse();
-                }
+            (await svc.Exists(processName)).Should().BeFalse();
+        }
+    }
+
+    [TestMethod]
+    public async Task CreateScope_ExistingLock_NoLock()
+    {
+        using (var scope = ServiceProvider.CreateScope())
+        {
+            var svc = scope.ServiceProvider.GetRequiredService<IProcessLock>();
+
+            var processName = Guid.NewGuid().ToString();
+            await svc.Create(processName, 10000);
+
+            using (var pls = svc.BeginScope(processName))
+            {
+                pls.Token.Should().BeNull();
+                pls.IsLocked.Should().BeFalse();
             }
         }
     }
 }
+

@@ -20,6 +20,12 @@ namespace BitPantry.ProcessLock.Implementation.Database
                             options.DatabaseProcessLockOptions.ConnectionString, 
                             options.DatabaseProcessLockOptions.DoUseUniqueTableNameSuffix));
                     break;
+                case DatabaseProcessLockServerType.Sqlite:
+                    services.AddScoped<IDatabaseProcessLockContext>(svc => 
+                        new SqliteProcessLockContext(
+                            options.DatabaseProcessLockOptions.ConnectionString, 
+                            options.DatabaseProcessLockOptions.DoUseUniqueTableNameSuffix));
+                    break;
                 default:
                     throw new ArgumentOutOfRangeException($"{options.DatabaseProcessLockOptions.ServerType} is not defined for this switch");
             }
