@@ -1,8 +1,7 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using FluentAssertions;
-using BitPantry.ProcessLock.Implementation.Database;
-using System;
+using BitPantry.ProcessLock.Implementation.SqlServer;
 
 namespace BitPantry.ProcessLock.Tests;
 

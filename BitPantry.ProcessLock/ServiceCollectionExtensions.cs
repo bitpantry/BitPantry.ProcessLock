@@ -1,32 +1,22 @@
-﻿using BitPantry.ProcessLock.Implementation.Database;
-using Microsoft.Extensions.DependencyInjection;
-using System;
-using System.Collections.Generic;
-using System.Runtime.CompilerServices;
-using System.Text;
+﻿using Microsoft.Extensions.DependencyInjection;
+
 
 namespace BitPantry.ProcessLock
 {
     public static class ServiceCollectionExtensions
     {
-        private static Dictionary<ProcessLockImplementation, IProcessLockServiceConfigurator> ConfiguratorDict 
-            = new Dictionary<ProcessLockImplementation, IProcessLockServiceConfigurator>()
-        {
-            { ProcessLockImplementation.Database, new DatabaseProcessLockServiceConfigurator() }
-        };
-
         /// <summary>
-        /// Configures Process Locks for the given services collection
+        /// Configures the process locks feature on startup
         /// </summary>
-        /// <param name="services">The services collection</param>
-        /// <param name="configureOptionsAction">The process lock options</param>
-        public static IServiceCollection ConfigureProcessLocks(this IServiceCollection services, Action<ProcessLockOptions> configureOptionsAction)
+        /// <param name="services">The applications IServiceCollection </param>
+        /// <param name="configAction">The action to configure the process lock</param>
+        /// <returns>The IServiceCollection</returns>
+        public static IServiceCollection AddProcessLock(this IServiceCollection services, Action<ProcessLockConfiguration> configAction)
         {
-            var options = new ProcessLockOptions();
-            configureOptionsAction(options);
-            ConfiguratorDict[options.Implementation].Configure(services, options);
-
+            configAction(new ProcessLockConfiguration(services));
             return services;
-        }  
+        }
+
+
     }
 }

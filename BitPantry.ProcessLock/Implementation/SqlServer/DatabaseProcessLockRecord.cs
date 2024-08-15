@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace BitPantry.ProcessLock
+namespace BitPantry.ProcessLock.Implementation.SqlServer
 {
     public class DatabaseProcessLockRecord
     {

@@ -1,6 +1,7 @@
 ﻿using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-
+using BitPantry.ProcessLock.Implementation.SqlServer;
+using BitPantry.ProcessLock;
 
 namespace BitPantry.ProcessLock.Tests
 {
@@ -22,12 +23,7 @@ namespace BitPantry.ProcessLock.Tests
 
             var services = new ServiceCollection();
 
-            services.ConfigureProcessLocks(opt =>
-            {
-                opt.UseRelationalDatabase()
-                    .WithSqlServer(Config.GetConnectionString("SqlServer"))
-                    .UseUniqueTableNameSuffix();
-            });
+            services.AddProcessLock(opt => opt.UseSqlServer(Config.GetConnectionString("SqlServer"), true));
 
             ServiceProvider = services.BuildServiceProvider();
         }
