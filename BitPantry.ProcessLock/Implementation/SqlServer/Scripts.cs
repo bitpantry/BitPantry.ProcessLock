@@ -3,7 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Text;
 
-namespace BitPantry.ProcessLock.Implementation.Database
+namespace BitPantry.ProcessLock.Implementation.SqlServer
 {
     internal class Scripts
     {
@@ -11,20 +11,18 @@ namespace BitPantry.ProcessLock.Implementation.Database
         private const string SelectTableScriptName = "selectTable";
         private const string DropTableScriptName = "dropTable";
 
-        private DatabaseProcessLockServerType _serverType;
         private readonly string _tableName;
         private readonly Dictionary<string, string> _scripts;
 
-        public Scripts(DatabaseProcessLockServerType serverType, string tableNameSuffix) 
+        public Scripts(string tableNameSuffix) 
         { 
-            _serverType = serverType;
             _tableName = $"ProcessLock{tableNameSuffix}";
 
             _scripts = new Dictionary<string, string>
             {
                 // CREATE TABLE
 
-                { $"{DatabaseProcessLockServerType.SqlServer}_{CreateTableScriptName}",
+                { CreateTableScriptName,
                         $"CREATE TABLE [dbo].[{_tableName}] " +
                         "( " +
                         "[ProcessName][varchar](200) NOT NULL, " +
@@ -37,7 +35,7 @@ namespace BitPantry.ProcessLock.Implementation.Database
 
                 // SELECT TABLE
 
-                { $"{DatabaseProcessLockServerType.SqlServer}_{SelectTableScriptName}",
+                { SelectTableScriptName,
                         "SELECT CAST(COUNT(*) AS BIGINT) " +
                         "FROM INFORMATION_SCHEMA.TABLES " +
                         "WHERE TABLE_SCHEMA = 'dbo' " +
@@ -45,7 +43,7 @@ namespace BitPantry.ProcessLock.Implementation.Database
 
                 // DROP TABLE
 
-                { $"{DatabaseProcessLockServerType.SqlServer}_{DropTableScriptName}", $"DROP TABLE [dbo].[{_tableName}]" }
+                { DropTableScriptName, $"DROP TABLE [dbo].[{_tableName}]" }
 
             };
 
@@ -69,6 +67,6 @@ namespace BitPantry.ProcessLock.Implementation.Database
         public string GetDeleteScript()
             => $"DELETE FROM {_tableName} WHERE Token = @Token";
 
-        private string GetScript(string scriptName) => _scripts[$"{_serverType}_{scriptName}"];
+        private string GetScript(string scriptName) => _scripts[scriptName];
     }
 }

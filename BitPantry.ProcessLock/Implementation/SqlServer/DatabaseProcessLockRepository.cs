@@ -8,7 +8,7 @@ using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace BitPantry.ProcessLock.Implementation.Database
+namespace BitPantry.ProcessLock.Implementation.SqlServer
 {
     public class DatabaseProcessLockRepository
     {
@@ -23,7 +23,6 @@ namespace BitPantry.ProcessLock.Implementation.Database
         {
             _ctx = ctx;
             _scripts = new Scripts(
-                ctx.ServerType,
                 ctx.UseTableNameSuffix
                     ? GetRandomTableNameSuffix()
                     : null);

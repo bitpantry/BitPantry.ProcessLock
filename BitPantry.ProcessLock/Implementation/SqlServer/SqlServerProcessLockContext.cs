@@ -4,12 +4,11 @@ using System.Data;
 using System.Data.SqlClient;
 using System.Text;
 
-namespace BitPantry.ProcessLock.Implementation.Database
+namespace BitPantry.ProcessLock.Implementation.SqlServer
 {
     public class SqlServerProcessLockContext : IDatabaseProcessLockContext
     {
         public bool UseTableNameSuffix { get; }
-        public DatabaseProcessLockServerType ServerType => DatabaseProcessLockServerType.SqlServer;
         public IDbConnection Connection { get; private set; }
 
         public SqlServerProcessLockContext(string connectionString, bool useTableNameSuffix)

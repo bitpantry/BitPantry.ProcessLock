@@ -26,29 +26,14 @@ So, you can either have only one of these processes running, or you can figure o
 # Quick Start
 ProcessLock is pretty simple to get setup. 
 
-I've provided an extension function for the `IServiceCollection`. Take a peak at the `BitPantry.ProcessLock.Tests` project for a full setup example and tests of the `IProcessLock` implementations.
+I've provided an extension function for the `IServiceCollection`. Take a peak at the `BitPantry.ProcessLock.Tests` project for a full setup example and tests of the `IProcessLock` implementations. Since this is designed for distributed systems it necessarily depends on some connected service for the locking mechanism. So, there isn't a default configuration - you'll need to configure a specific implementation when adding it to your project. Out of the box, it comes with a SqlServer implementation.
 
 ### For SQL Server
 ```
-var services = new ServiceCollection();
-
-services.ConfigureProcessLocks(opt =>
-{
-    opt.UseRelationalDatabase()
-        .WithSqlServer("...a connection string goes here..."))
-});
+services.AddProcessLock(opt => 
+    opt.UseSqlServer(Config.GetConnectionString("SqlServer")));
 ```
 
-### For Sqlite
-```
-var services = new ServiceCollection();
-
-services.ConfigureProcessLocks(opt =>
-{
-    opt.UseRelationalDatabase()
-        .WithSqlite("...a connection string goes here..."))
-});
-```
 As long as the connection string and credentials are valid and have sufficient privileges, the ProcessLock database table (called *ProcessLock*) will be created the first time it is needed.
 
 To create and manage Process Locks, inject the `IProcessLock` dependency.
@@ -219,108 +204,14 @@ public class TestLogic
 # How It Works
 The project assumes that there are multiple mechanisms for synchronizing distributed process instances and provides the abstractions necessary to implement those metchanisms later. 
 
-Right now, however, this project uses a centralized relational database that can be accessed by all instances of a process as the synchronization mechanism.
+Right now, however, this project uses a SqlServer database that can be accessed by all instances of a process as the synchronization mechanism.
 
 There are implementations for both **SQL Server** and **Sqlite**. 
-
-- **SQL Server** is my typical production relational database, so I included that one as default
-- As far as the ProcessLock project functionality is concerned, **Sqlite** works just like SQL Server and is great for limited integration testing (on a build server like AppVeyor, for example) - it also requres no additional processes or dependencies (all in memory and file system based)
 
 Using a relational database, we leverage a key constraint to ensure that only one instance of the process can ever successfuly enter a lock record into the database at once.
 
 # Extending
-If you would like to add a new implementation around a different locking mechanism here's how.
+If you would like to add a new implementation around a different locking mechanism simply create a new implementation of `IProcessLock`. Use the SqlServer implementation for reference - you can find it in the `BitPantry.ProcessLock.Implementation.SqlServer` namespace. You can see how this implementation is configured by looking at the `BitPantry.ProcessLock.Implementation.SqlServer.ProcessLockConfigurationExtensions` class.
 
 ## Implement `IProcessLock`
 This is pretty self-explanatory - you need to create an implementation of `IProcessLock` that will be used to create, renew, and release locks.
-## Implement `IProcessLockServiceConfigurator`
-This will be used to 'wire up' your implementation at run-time. It accepts an `IServiceCollection` and the `ProcessLockOptions` object. Here's an example from the Database implementation.
-
-The Database implementation wires up a `DatabaseProcessLock` implementation for the `IProcessLock` interface. This is technically all that is required to create a new implementation. However, the `DatabaseProcessLock` has some other dependencies that also need to be configured, including a `DatabaseProcessLockRepository` and an `IDatabaseProcessLockContext`.
-
-You can see that for the given server type (SQL Server or Sqlite) it can configure the specific `IDatabaseProcessLockContext` implementation. 
-
-```
-internal class DatabaseProcessLockServiceConfigurator : IProcessLockServiceConfigurator
-{
-    public void Configure(IServiceCollection services, ProcessLockOptions options)
-    {
-        services.AddTransient<IProcessLock, DatabaseProcessLock>();
-        services.AddTransient<DatabaseProcessLockRepository>();
-
-        switch (options.DatabaseProcessLockOptions.ServerType)
-        {
-            case DatabaseProcessLockServerType.SqlServer:
-                services.AddTransient<IDatabaseProcessLockContext>(svc => 
-                    new SqlServerProcessLockContext(
-                        options.DatabaseProcessLockOptions.ConnectionString, 
-                        options.DatabaseProcessLockOptions.DoUseUniqueTableNameSuffix));
-                break;
-            case DatabaseProcessLockServerType.Sqlite:
-                services.AddTransient<IDatabaseProcessLockContext>(svc => 
-                    new SqliteProcessLockContext(
-                        options.DatabaseProcessLockOptions.ConnectionString, 
-                        options.DatabaseProcessLockOptions.DoUseUniqueTableNameSuffix));
-                break;
-            default:
-                throw new ArgumentOutOfRangeException(
-                    $"{options.DatabaseProcessLockOptions.ServerType} is not defined for this switch");
-        }
-    }
-}
-```
-## Add a new value to the `ProcessLockImplementation` enumeration
-Next, you'll need to add a new value to the `ProcessLockImplementation` enumeration to identify your implementation. 
-
-```
-public enum ProcessLockImplementation
-{
-    Database,
-    NewImpl // enum value for my new implementation
-}
-```
-## Add a map to the `ServiceCollectionExtensions:ConfiguratorDict`
-Add a new map to the `ServiceCollectionExtensions.ConfiguratorDict` from your new `ProcessLockImplementation` enum to an instance of your implementation of `IProcessLockServiceConfigurator`. Here's an example.
-
-```
-private static Dictionary<ProcessLockImplementation, IProcessLockServiceConfigurator> ConfiguratorDict 
-    = new Dictionary<ProcessLockImplementation, IProcessLockServiceConfigurator>()
-{
-    { ProcessLockImplementation.Database, new DatabaseProcessLockServiceConfigurator() },
-
-    // NEW MAPPING FOR MYIMPL
-    { ProcessLockImplementation.MyImpl, new MyImplProcessLockServiceConfigurator() }
-};
-```
-
-## Add Configuration
-Update the `ProcessLockOptions` object to allow for the configuration of your new implementation. Here's how the Database implementation has been added.
-
-```
-public class ProcessLockOptions
-{
-    internal ProcessLockImplementation Implementation { get; private set; }
-    internal RelationalDatabaseProcessLockOptions DatabaseProcessLockOptions { get; set; }
-
-    internal ProcessLockOptions() { }
-
-    /// <summary>
-    /// Configures process locks to use a relational database as the distributed locking mechanism
-    /// </summary>
-    /// <returns>The relational database options</returns>
-    public RelationalDatabaseProcessLockOptions UseRelationalDatabase() 
-    {
-        Implementation = ProcessLockImplementation.Database;
-        DatabaseProcessLockOptions = new RelationalDatabaseProcessLockOptions();
-
-        return DatabaseProcessLockOptions;
-    }
-}
-```
-
-Notice `UseRelationalDatabase` returns a `RelationalDatabaseProcessLockOptions` object that allows for the continued configuration of the Database implementation. Create your own options object for additional configuration.
-
-The configured `ProcessLockOptions` object will be passed to your implementation of the `IProcessLockServiceConfigurator` during startup.
-
-## Organization
-Currently, implementations of `IProcessLock` are organized within the `BitPantry.ProcessLock.Implementation` namespace. Currently, there is only the one *Database* implementation.

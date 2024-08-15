@@ -5,7 +5,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace BitPantry.ProcessLock.Implementation.Database
+namespace BitPantry.ProcessLock.Implementation.SqlServer
 {
     public class DatabaseProcessLock : IProcessLock
     {
