@@ -4,6 +4,16 @@
     <TargetFramework>net8.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>disable</Nullable>
+    <Version>1.0.0.0</Version>
+    <Authors>BitPantry</Authors>
+    <Description>A library for isolating distributed process execution using a central locking mechanism.</Description>
+    <PackageProjectUrl>https://github.com/bitpantry/BitPantry.ProcessLock</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/bitpantry/BitPantry.ProcessLock</RepositoryUrl>
+    <PackageReleaseNotes>- Removed Sqlite implementation
+- Made the entire library less database specific with cleaner lines between the API/SDK and the now single SqlServer implementation
+- Streamlined configuration and made it feel more modern</PackageReleaseNotes>
+    <AssemblyVersion>3.0.0.0</AssemblyVersion>
+    <FileVersion>3.0.0.0</FileVersion>
   </PropertyGroup>
 
   <ItemGroup>
