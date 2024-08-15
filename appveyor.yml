@@ -1,7 +1,7 @@
 version: 3.0.0.{build}
 image: Visual Studio 2022
 init:
-- cmd: sqlcmd -S "(localdb)\MSSQLLocalDB" -Q "CREATE DATABASE bitpantry.processlock.tests"
+- cmd: sqlcmd -S "(localdb)\MSSQLLocalDB" -Q "CREATE DATABASE testsDb"
 dotnet_csproj:
   patch: true
   file: '**\*.csproj'
